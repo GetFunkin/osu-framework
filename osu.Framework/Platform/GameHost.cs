@@ -122,6 +122,20 @@ namespace osu.Framework.Platform
         public abstract void OpenFileExternally(string filename);
 
         /// <summary>
+        /// Requests to present a file externally in the platform's native file browser.
+        /// </summary>
+        /// <remarks>
+        /// This will open the parent folder and, (if available) highlight the file.
+        /// </remarks>
+        /// <example>
+        ///     <para>"C:\Windows\explorer.exe" -> opens 'C:\Windows' and highlights 'explorer.exe' in the window.</para>
+        ///     <para>"C:\Windows\System32" -> opens 'C:\Windows' and highlights 'System32' in the window.</para>
+        ///     <para>"C:\Windows\System32\" -> opens 'C:\Windows\System32' and highlights nothing.</para>
+        /// </example>
+        /// <param name="filename">The absolute path to the file/folder to be shown in its parent folder.</param>
+        public abstract void PresentFileExternally(string filename);
+
+        /// <summary>
         /// Requests that a URL be opened externally in a web browser, if available.
         /// </summary>
         /// <param name="url">The URL of the page which should be opened.</param>
@@ -134,6 +148,14 @@ namespace osu.Framework.Platform
 
         [CanBeNull]
         public virtual Clipboard GetClipboard() => null;
+
+        /// <summary>
+        /// The default initial path when requesting a user to select a file/folder.
+        /// </summary>
+        /// <remarks>
+        /// Provides a sane starting point for user-accessible storage.
+        /// </remarks>
+        public virtual string InitialFileSelectorPath => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
         /// <summary>
         /// Retrieve a storage for the specified location.
@@ -587,6 +609,14 @@ namespace osu.Framework.Platform
 
         public void Run(Game game)
         {
+            if (Thread.CurrentThread.IsThreadPoolThread)
+            {
+                // This is a common misuse of GameHost, where typically consumers will have a mutex waiting for the game to run.
+                // Exceptions thrown here will become unobserved, so any such mutexes will never be set.
+                // Instead, immediately terminate the application in order to notify of incorrect use in all cases.
+                Environment.FailFast($"{nameof(GameHost)}s should not be run on a TPL thread (use TaskCreationOptions.LongRunning).");
+            }
+
             GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
 
             if (LimitedMemoryEnvironment)
@@ -726,7 +756,7 @@ namespace osu.Framework.Platform
         protected virtual Storage GetDefaultGameStorage()
         {
             // first check all valid paths for any existing install.
-            foreach (var path in UserStoragePaths)
+            foreach (string path in UserStoragePaths)
             {
                 var storage = GetStorage(path);
 
@@ -736,7 +766,7 @@ namespace osu.Framework.Platform
             }
 
             // if an existing directory could not be found, use the first path that can be created.
-            foreach (var path in UserStoragePaths)
+            foreach (string path in UserStoragePaths)
             {
                 try
                 {
@@ -908,7 +938,7 @@ namespace osu.Framework.Platform
 
                 foreach (var handler in AvailableInputHandlers)
                 {
-                    var handlerType = handler.ToString();
+                    string handlerType = handler.ToString();
                     handler.Enabled.Value = configIgnores.All(ch => ch != handlerType);
                 }
             };

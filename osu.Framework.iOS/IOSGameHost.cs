@@ -18,7 +18,6 @@ using osu.Framework.iOS.Graphics.Textures;
 using osu.Framework.iOS.Graphics.Video;
 using osu.Framework.iOS.Input;
 using osu.Framework.Platform;
-using osu.Framework.Threading;
 using UIKit;
 
 namespace osu.Framework.iOS
@@ -104,6 +103,8 @@ namespace osu.Framework.iOS
 
         public override void OpenFileExternally(string filename) => throw new NotImplementedException();
 
+        public override void PresentFileExternally(string filename) => throw new NotImplementedException();
+
         public override void OpenUrlExternally(string url)
         {
             UIApplication.SharedApplication.InvokeOnMainThread(() =>
@@ -119,7 +120,8 @@ namespace osu.Framework.iOS
         public override IResourceStore<TextureUpload> CreateTextureLoaderStore(IResourceStore<byte[]> underlyingStore)
             => new IOSTextureLoaderStore(underlyingStore);
 
-        public override VideoDecoder CreateVideoDecoder(Stream stream) => new IOSVideoDecoder(stream);
+        public override VideoDecoder CreateVideoDecoder(Stream stream)
+            => new IOSVideoDecoder(stream);
 
         public override IEnumerable<KeyBinding> PlatformKeyBindings => new[]
         {
